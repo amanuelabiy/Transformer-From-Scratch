@@ -15,9 +15,9 @@ class BilingualDataset(Dataset):
         self.src_lang = src_lang
         self.tgt_lang = tgt_lang
 
-        self.sos_token = torch.Tensor([tokenizer_src.token_to_id("[SOS]")], dtype=torch.int64)
-        self.eos_token = torch.Tensor([tokenizer_src.token_to_id("[EOS]")], dtype=torch.int64)
-        self.pad_token = torch.Tensor([tokenizer_src.token_to_id("[PAD]")], dtype=torch.int64)
+        self.sos_token = torch.tensor([tokenizer_src.token_to_id("[SOS]")], dtype=torch.int64)
+        self.eos_token = torch.tensor([tokenizer_src.token_to_id("[EOS]")], dtype=torch.int64)
+        self.pad_token = torch.tensor([tokenizer_src.token_to_id("[PAD]")], dtype=torch.int64)
     
     def __len__(self):
         return len(self.dataset)
@@ -45,7 +45,8 @@ class BilingualDataset(Dataset):
                 torch.tensor(enc_input_tokens, dtype=torch.int64),
                 self.eos_token,
                 torch.tensor([self.pad_token] * enc_num_padding_tokens, dtype=torch.int64)
-            ]
+            ],
+            dim=0
         )
 
         # Add SOS to the decoder input
@@ -55,7 +56,8 @@ class BilingualDataset(Dataset):
                 self.sos_token,
                 torch.tensor(dec_input_tokens, dtype=torch.int64),
                 torch.tensor([self.pad_token] * dec_num_padding_tokens, dtype=torch.int64)
-            ]
+            ],
+            dim=0
         )
 
         # ADD EOS to the label (What we expect as output from decoder)
@@ -65,7 +67,8 @@ class BilingualDataset(Dataset):
                 torch.tensor(dec_input_tokens, dtype=torch.int64),
                 self.eos_token,
                 torch.tensor([self.pad_token] * dec_num_padding_tokens, dtype=torch.int64)
-            ]
+            ],
+            dim=0,
         )
 
         assert encoder_input.size(0) == self.seq_len
@@ -76,14 +79,14 @@ class BilingualDataset(Dataset):
             "encoder_input": encoder_input, # (Seq_Len)
             "decoder_input": decoder_input, # (Seq_Len)
             "encoder_mask": (encoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int(), # (1, 1, Seq_Len)
-            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).unsqueeze(0).int() & casual_mask(decoder_input.size(0)), # (1, Seq_Len) & (1, Seq_Len, Seq_Len)
+            "decoder_mask": (decoder_input != self.pad_token).unsqueeze(0).int() & casual_mask(decoder_input.size(0)), # (1, Seq_Len) & (1, Seq_Len, Seq_Len)
             "label": label, # (Seq_Len)
             "src_text": src_text,
             "tgt_text": tgt_text
         }
 
 def casual_mask(size):
-    mask = torch.triu(torch.ones(1, size, size), diagonal=1).type(torch.int)
+    mask = torch.triu(torch.ones((1, size, size)), diagonal=1).type(torch.int)
     return mask == 0 
 
 
